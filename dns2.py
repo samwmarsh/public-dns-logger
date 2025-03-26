@@ -1,30 +1,50 @@
-from dnserver import DNSServer, DNSHandler
+import datetime
 import socket
+from dnslib import DNSRecord, DNSHeader, RR, A, QTYPE, RCODE
 
-# The IP address to return for all matching domains
-TARGET_IP = "192.168.1.100"
+DEFAULT_IP = "192.0.2.1"
+ALLOWED_DOMAIN = ".blah.blah.net"
+PORT = 53
+BUFFER_SIZE = 512
+LOG_FILE = "/tmp/lookups.txt"
 
-# The wildcard domain you want to match
-WILDCARD_DOMAIN = ".BLAH.HOST.NET"
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('0.0.0.0', PORT))
 
-def handle_query(request: DNSHandler):
-    qname = str(request.q.qname).rstrip('.')
-    qtype = request.q.qtype
+print(f"DNS server listening on port {PORT}, responding to *{ALLOWED_DOMAIN} with {DEFAULT_IP}")
 
-    # Log incoming query
-    print(f"Received query: {qname} (type {qtype})")
+while True:
+    try:
+        data, addr = sock.recvfrom(BUFFER_SIZE)
+        try:
+            request = DNSRecord.parse(data)
+            qname = str(request.q.qname).rstrip('.')
+            qtype = QTYPE[request.q.qtype]
 
-    # Only respond to A (IPv4) queries and match the wildcard domain
-    if qtype == 1 and qname.endswith(WILDCARD_DOMAIN):
-        return {
-            "type": "A",
-            "ttl": 60,
-            "rdata": TARGET_IP
-        }
-    else:
-        # Return empty (NXDOMAIN) for non-matching domains
-        return None
+            timestamp = datetime.datetime.now().astimezone().isoformat()
+            log_entry = f"[{timestamp}] {addr[0]} asked for {qname} ({qtype})"
 
-if __name__ == "__main__":
-    print(f"Starting DNS server to resolve *{WILDCARD_DOMAIN} → {TARGET_IP}")
-    DNSServer(handlers={"A": handle_query}).start()
+            response = DNSRecord(DNSHeader(id=request.header.id, qr=1, aa=1, ra=1), q=request.q)
+
+            if qtype == "A" and qname.endswith(ALLOWED_DOMAIN):
+                response.add_answer(RR(qname, QTYPE.A, rclass=1, ttl=300, rdata=A(DEFAULT_IP)))
+                print(f"{log_entry} -> {DEFAULT_IP}")
+            else:
+                response.header.rcode = RCODE.NXDOMAIN
+                print(f"{log_entry} -> NXDOMAIN")
+
+            with open(LOG_FILE, "a") as f:
+                f.write(f"{log_entry}\n")
+
+            sock.sendto(response.pack(), addr)
+
+        except Exception as e:
+            print(f"Failed to process DNS request from {addr}: {e}")
+            continue
+
+    except KeyboardInterrupt:
+        print("\nShutting down DNS server.")
+        break
+    except Exception as e:
+        print(f"Unexpected error: {e}")
