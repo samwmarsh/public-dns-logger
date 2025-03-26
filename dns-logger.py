@@ -8,7 +8,7 @@ BUFFER_SIZE = 512
 LOG_FILE = "/tmp/lookups.txt"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockops(socket.SOL_SOCKET, socket.SO_REUSERADDR, 1)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(('0.0.0.0', PORT))
 
 print("Listening for DNS requests")
