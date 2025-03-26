@@ -20,7 +20,7 @@ while True:
       try:
          dns_record = DNSRecord.parse(data)
          qname = str(dns_record.q.qname)
-         timestamp = datetime.utcnow().isoformat()
+         timestamp = datetime.datetime.now(datetime.UTC)
          log_entry = f"[{timestamp}] {addr[0]} -> {qname}"
 
          print(log_entry)
