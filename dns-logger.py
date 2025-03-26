@@ -1,6 +1,6 @@
+import datetime
 import socket
 from dnslib import DNSRecord
-from datetime import datetime
 
 DEFAULT_IP = "192.0.2.1"
 PORT = 53
@@ -20,7 +20,7 @@ while True:
       try:
          dns_record = DNSRecord.parse(data)
          qname = str(dns_record.q.qname)
-         timestamp = datetime.now(datetime.UTC)
+         timestamp = datetime.datetime.now(datetime.UTC)
          log_entry = f"[{timestamp}] {addr[0]} -> {qname}"
 
          print(log_entry)
