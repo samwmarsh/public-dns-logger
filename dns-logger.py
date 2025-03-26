@@ -26,7 +26,7 @@ while True:
 
             print(log_entry)
             with open(LOG_FILE, "a") as f:
-                f.write(f"{qname}\n")
+                f.write(f"{log_entry}\n")
 
             # Create a DNS response
             reply = DNSRecord(DNSHeader(id=dns_record.header.id, qr=1, aa=1, ra=1), q=dns_record.q)
